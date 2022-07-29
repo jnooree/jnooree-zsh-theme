@@ -30,12 +30,16 @@ function prompt_current_dir() {
 # https://github.com/zsh-users/zsh/blob/master/Misc/vcs_info-examples
 autoload -Uz vcs_info
 zstyle ':vcs_info:*' enable git
-zstyle ':vcs_info:git*+set-message:*' hooks git-untracked git-ahead-behind
+zstyle ':vcs_info:git*+set-message:*' hooks git-untracked git-ref-ahead-behind
 zstyle ':vcs_info:*' check-for-changes true
 zstyle ':vcs_info:*' stagedstr "%{$fg[cyan]%}+"
 zstyle ':vcs_info:*' unstagedstr "%{$fg[yellow]%}!"
 zstyle ':vcs_info:*' formats "%m%{$fg[blue]%}:%c%u"
 zstyle ':vcs_info:*' actionformats "%m%{$fg[blue]%}:%c%u"
+
+# Don't need patch information
+# see https://github.com/zsh-users/zsh/blob/master/Functions/VCS_Info/Backends/VCS_INFO_get_data_git
+function VCS_INFO_git_handle_patches() { }
 
 # Add support for untracked files
 function +vi-git-untracked() {
@@ -45,36 +49,35 @@ function +vi-git-untracked() {
 	fi
 }
 
-# Add count for ahead/behind commits vs upstream
-function +vi-git-ahead-behind() {
-	local ahead behind
+# Add ref info and count for ahead/behind commits vs upstream
+function +vi-git-ref-ahead-behind() {
+	local ref ahead behind
 	local -a gitstatus
 
 	# Exit early in case the worktree is on a detached HEAD
-	git rev-parse "${hook_com[branch]}@{upstream}" >/dev/null 2>&1 || return
+	if ! ref="$(git symbolic-ref -q --short HEAD)"; then
+		hook_com[misc]="→ $(git rev-parse --short HEAD)"
+		return
+	fi
 
-	local -a ahead_and_behind=(
-		$(git rev-list --left-right --count HEAD..."${hook_com[branch]}@{upstream}" 2>/dev/null)
+	read -r ahead behind < <(
+		git rev-list --left-right --count \
+			HEAD..."${hook_com[branch]}@{upstream}" 2>/dev/null
 	)
-
-	ahead="${ahead_and_behind[1]}"
-	behind="${ahead_and_behind[2]}"
 
 	(( $ahead )) && gitstatus+=("%{$fg[green]%}+${ahead}%{$fg[blue]%}")
 	(( $behind )) && gitstatus+=("%{$fg[red]%}-${behind}")
 
-	hook_com[misc]="${gitstatus:+"%{$fg[blue]%}:"}${(j:/:)gitstatus}"
+	hook_com[misc]="${ref}${gitstatus:+"%{$fg[blue]%}:"}${(j:/:)gitstatus}"
 }
 
 function +vi-prompt-git() {
 	local ref mode repo_path vcs_info_result
 
+	# exit if not in a git repo
 	if [[ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != "true" ]]; then
 		return
 	fi
-
-	ref="$(git symbolic-ref --short HEAD 2>/dev/null)" \
-		|| ref="→ $(git rev-parse --short HEAD 2>/dev/null)"
 
 	vcs_info
 	vcs_info_result="${vcs_info_msg_0_%%:}"
