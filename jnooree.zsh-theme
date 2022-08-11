@@ -43,7 +43,7 @@ function VCS_INFO_git_handle_patches() { }
 
 # Add support for untracked files
 function +vi-git-untracked() {
-	if git status --porcelain | grep -qm 1 '^??' &>/dev/null; then
+	if git status --porcelain 2>/dev/null | grep -qm 1 '^??' &>/dev/null; then
 		# Bright black (ANSI code 90)
 		hook_com[unstaged]+=$'%{\033[90m%}?'
 	fi
