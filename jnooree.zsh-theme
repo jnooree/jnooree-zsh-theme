@@ -73,7 +73,7 @@ function +vi-git-ref-ahead-behind() {
 }
 
 function +vi-prompt-git() {
-	local ref mode repo_path vcs_info_result
+	local mode repo_path vcs_info_result
 
 	# exit if not in a git repo
 	if [[ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != "true" ]]; then
@@ -92,7 +92,7 @@ function +vi-prompt-git() {
 		mode=" >R>"
 	fi
 
-	print -n " %{$fg_bold[blue]%}(%{$fg[red]%}${ref}${vcs_info_result}\
+	print -n " %{$fg_bold[blue]%}(%{$fg[red]%}${vcs_info_result}\
 %{$fg_bold[blue]%})%{$fg[magenta]%}${mode}%{$reset_color%}"
 }
 
