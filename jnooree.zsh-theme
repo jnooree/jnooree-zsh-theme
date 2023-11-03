@@ -6,7 +6,7 @@ autoload -Uz colors && colors
 # Enable prompt substitution
 setopt promptsubst
 
-if [[ -z "${SHORT_HOST-}" ]]; then
+if [[ -z ${SHORT_HOST-} ]]; then
 	SHORT_HOST="$(hostname -s)"
 fi
 
@@ -15,9 +15,9 @@ function prompt_current_dir() {
 	local expanded_curr_dir="${(%)curr_dir}"
 
 	# Show full path of named directories if they are the current directory.
-	if [[ "$expanded_curr_dir" != */* ]]; then
+	if [[ $expanded_curr_dir != */* ]]; then
 		curr_dir='%/'
-	elif (( ${#expanded_curr_dir} > $(( $COLUMNS - ${MIN_COLUMNS:-30} )) )); then
+	elif [[ ${#expanded_curr_dir} -gt $(( COLUMNS - ${MIN_COLUMNS:-30} )) ]]; then
 		curr_dir='.../%2d'
 	fi
 
@@ -39,7 +39,9 @@ zstyle ':vcs_info:*' actionformats "%m%{$fg[blue]%}:%c%u"
 
 # Don't need patch information
 # see https://github.com/zsh-users/zsh/blob/master/Functions/VCS_Info/Backends/VCS_INFO_get_data_git
-function VCS_INFO_git_handle_patches() { }
+function VCS_INFO_git_handle_patches() {
+	:
+}
 
 # Add support for untracked files
 function +vi-git-untracked() {
@@ -66,8 +68,8 @@ function +vi-git-ref-ahead-behind() {
 			HEAD..."${hook_com[branch]}@{upstream}" 2>/dev/null
 	)
 
-	(( $ahead )) && gitstatus+=("%{$fg[green]%}+${ahead}%{$fg[blue]%}")
-	(( $behind )) && gitstatus+=("%{$fg[red]%}-${behind}")
+	(( ahead )) && gitstatus+=("%{$fg[green]%}+${ahead}%{$fg[blue]%}")
+	(( behind )) && gitstatus+=("%{$fg[red]%}-${behind}")
 
 	hook_com[misc]="${ref}${gitstatus:+"%{$fg[blue]%}:"}${(j:/:)gitstatus}"
 }
@@ -76,7 +78,7 @@ function +vi-prompt-git() {
 	local mode repo_path vcs_info_result
 
 	# exit if not in a git repo
-	if [[ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != "true" ]]; then
+	if [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) != true ]]; then
 		return
 	fi
 
@@ -84,9 +86,9 @@ function +vi-prompt-git() {
 	vcs_info_result="${vcs_info_msg_0_%%:}"
 
 	repo_path="$(git rev-parse --git-dir 2>/dev/null)"
-	if [[ -e "${repo_path}/BISECT_LOG" ]]; then
+	if [[ -e $repo_path/BISECT_LOG ]]; then
 		mode=" <B>"
-	elif [[ -e "${repo_path}/MERGE_HEAD" ]]; then
+	elif [[ -e $repo_path/MERGE_HEAD ]]; then
 		mode=" >M<"
 	elif [[ -e $repo_path/rebase-merge || -e $repo_path/rebase-apply ]]; then
 		mode=" >R>"
@@ -103,12 +105,12 @@ PROMPT="\
 %(?:%{$fg_bold[green]%}:%{$fg_bold[red]%})]\
 %{$reset_color%}\$(+vi-prompt-git)%-50(l::"$'\n'"%B>%b) "
 
-if [[ "$USER" != "$DEFAULT_USER" ]]; then
+if [[ $USER != "$DEFAULT_USER" ]]; then
 	RPROMPT+="${USER}@${SHORT_HOST}"
-elif [[ -n "$SSH_CONNECTION" ]]; then
+elif [[ -n $SSH_CONNECTION ]]; then
 	RPROMPT="@${SHORT_HOST}"
 fi
 
-if [[ -n "$RPROMPT" ]]; then
+if [[ -n $RPROMPT ]]; then
 	RPROMPT="%{$fg_bold[blue]%}$RPROMPT%{$reset_color%}"
 fi
