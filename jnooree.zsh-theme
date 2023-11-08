@@ -69,8 +69,7 @@ function +vi-git-ref-ahead-behind() {
 	(( behind )) && gitstatus+=("%F{red}-${behind}")
 
 	hook_com[misc]="\
-${${${${ref//\\/\\\\\\\\}//\%/%%}//\$/\\\\\$}//\`/\\\\\`}\
-${gitstatus:+"%F{blue}:"}${(j:/:)gitstatus}"
+${ref//\%/%%}${gitstatus:+"%F{blue}:"}${(j:/:)gitstatus}"
 }
 
 function +vi-prompt-git() {
@@ -93,12 +92,12 @@ function +vi-prompt-git() {
 		mode=" >R>"
 	fi
 
-	print -n " %F{blue}(%F{red}${vcs_info_result}%F{blue})%F{magenta}${mode}%f"
+	print -n " %F{blue}(%F{red}${vcs_info_result}%F{blue})%F{magenta}${mode}"
 }
 
 # Now define prompt & rprompt
 PROMPT='%B%(?:%F{green}:%F{red})[%F{cyan}$(prompt_current_dir)'\
-$'%(?:%F{green}:%F{red})]%f$(+vi-prompt-git)%-50(l::\n%B>)%b '
+$'%(?:%F{green}:%F{red})]$(+vi-prompt-git)%f%-50(l::\n%B>)%b '
 
 if [[ $USER != "$DEFAULT_USER" ]]; then
 	RPROMPT='%n@%m'
