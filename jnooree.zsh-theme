@@ -68,8 +68,7 @@ function +vi-git-ref-ahead-behind() {
 	(( ahead )) && gitstatus+=("%F{green}+${ahead}%F{blue}")
 	(( behind )) && gitstatus+=("%F{red}-${behind}")
 
-	hook_com[misc]="\
-${ref//\%/%%}${gitstatus:+"%F{blue}:"}${(j:/:)gitstatus}"
+	hook_com[misc]="${ref//\%/%%}${gitstatus:+%F\{blue\}:}${(j:/:)gitstatus}"
 }
 
 function +vi-prompt-git() {
