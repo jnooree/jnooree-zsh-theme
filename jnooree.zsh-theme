@@ -109,7 +109,7 @@ function prompt_git() {
 
 # Now define prompt & rprompt
 PROMPT='%B%(?:%F{green}:%F{red})[%F{cyan}%1v%(?:%F{green}:%F{red})]'\
-$'$(prompt_git)%f%-50(l::\n%B>)%b '
+$'$(prompt_git)%f%-50(l::\n>)%b '
 
 if [[ $USER != "$DEFAULT_USER" ]]; then
 	RPROMPT='%n@%m'
