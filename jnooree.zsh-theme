@@ -75,10 +75,14 @@ function VCS_INFO_git_getbranch() {
 			HEAD..."${hook_com[branch]}@{upstream}" 2>/dev/null
 	)
 
-	(( ahead )) && gitstatus+=("%F{green}+${ahead}%F{blue}")
+	(( ahead )) && gitstatus+=("%F{green}+${ahead}")
 	(( behind )) && gitstatus+=("%F{red}-${behind}")
 
-	gitbranch="${ref//\%/%%}${gitstatus:+"%F{blue}:"}${(j:/:)gitstatus}"
+	if stashcnt="$(git rev-list -g --count refs/stash -- 2>/dev/null)"; then
+		gitstatus+=("%F{magenta}↓${stashcnt}")
+	fi
+
+	gitbranch="${ref//\%/%%}${gitstatus:+"%F{blue}:"}${(j"%F{blue}/")gitstatus}"
 	return 0
 }
 
