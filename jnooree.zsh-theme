@@ -115,6 +115,7 @@ function prompt_git() {
 PROMPT='%B%(?:%F{green}:%F{red})[%F{cyan}%1v%(?:%F{green}:%F{red})]'\
 $'$(prompt_git)%f%-50(l::\n>)%b '
 
+
 if [[ $USER != "$DEFAULT_USER" ]]; then
 	RPROMPT='%n@%m'
 elif [[ -n $SSH_CONNECTION ]]; then
@@ -122,5 +123,6 @@ elif [[ -n $SSH_CONNECTION ]]; then
 fi
 
 if [[ -n $RPROMPT ]]; then
+	ZLE_RPROMPT_INDENT=0
 	RPROMPT="%B%F{blue}$RPROMPT%f%b"
 fi
