@@ -64,19 +64,16 @@ function VCS_INFO_git_getbranch() {
 	local ref ahead behind
 	local -a gitstatus
 
-	# Exit early in case the worktree is on a detached HEAD
 	if ! ref="$(git symbolic-ref -q --short HEAD)"; then
-		gitbranch="→ $(git rev-parse --short HEAD)"
-		return 0
+		# detached HEAD
+		ref="→ $(git rev-parse --short HEAD)"
+	else
+		read -r ahead behind < <(
+			git rev-list --left-right --count "HEAD...${ref}@{upstream}" -- 2>/dev/null
+		)
+		(( ahead )) && gitstatus+=("%F{green}+${ahead}")
+		(( behind )) && gitstatus+=("%F{red}-${behind}")
 	fi
-
-	read -r ahead behind < <(
-		git rev-list --left-right --count \
-			HEAD..."${hook_com[branch]}@{upstream}" 2>/dev/null
-	)
-
-	(( ahead )) && gitstatus+=("%F{green}+${ahead}")
-	(( behind )) && gitstatus+=("%F{red}-${behind}")
 
 	if stashcnt="$(git rev-list -g --count refs/stash -- 2>/dev/null)"; then
 		gitstatus+=("%F{magenta}↓${stashcnt}")
