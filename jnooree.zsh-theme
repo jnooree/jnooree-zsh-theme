@@ -40,6 +40,61 @@ zstyle ':vcs_info:*' formats "%F{red}%b%F{blue}:%c%u%m"
 zstyle ':vcs_info:*' actionformats "%F{red}%b%F{blue}:%c%u%m" "%F{magenta}%a"
 
 # Begin overrides
+#
+# The Z Shell is copyright (c) 1992-2017 Paul Falstad, Richard Coleman,
+# Zoltán Hidvégi, Andrew Main, Peter Stephenson, Sven Wischnowsky, and
+# others.  All rights reserved.  Individual authors, whether or not
+# specifically named, retain copyright in all changes; in what follows, they
+# are referred to as `the Zsh Development Group'.  This is for convenience
+# only and this body has no legal status.  The Z shell is distributed under
+# the following licence; any provisions made in individual files take
+# precedence.
+#
+# Permission is hereby granted, without written agreement and without
+# licence or royalty fees, to use, copy, modify, and distribute this
+# software and to distribute modified versions of this software for any
+# purpose, provided that the above copyright notice and the following
+# two paragraphs appear in all copies of this software.
+#
+# In no event shall the Zsh Development Group be liable to any party for
+# direct, indirect, special, incidental, or consequential damages arising out
+# of the use of this software and its documentation, even if the Zsh
+# Development Group have been advised of the possibility of such damage.
+#
+# The Zsh Development Group specifically disclaim any warranties, including,
+# but not limited to, the implied warranties of merchantability and fitness
+# for a particular purpose.  The software provided hereunder is on an "as is"
+# basis, and the Zsh Development Group have no obligation to provide
+# maintenance, support, updates, enhancements, or modifications.
+#
+
+# see https://github.com/zsh-users/zsh/blob/master/Functions/VCS_Info/Backends/VCS_INFO_detect_git
+
+function VCS_INFO_detect_git() {
+	setopt localoptions NO_shwordsplit
+	local maintree
+
+	[[ $1 == '--flavours' ]] && { print -l git-p4 git-svn; return 0 }
+
+	if ! VCS_INFO_check_com ${vcs_comm[cmd]} ||
+			! vcs_comm[gitdir]="$(${vcs_comm[cmd]} rev-parse --git-dir 2> /dev/null)"; then
+		return 1
+	fi
+
+	if   [[ -d ${vcs_comm[gitdir]}/svn ]]             ; then vcs_comm[overwrite_name]='git-svn'
+	elif [[ -d ${vcs_comm[gitdir]}/refs/remotes/p4 ]] ; then vcs_comm[overwrite_name]='git-p4' ; fi
+
+	vcs_comm[basedir]="$(${vcs_comm[cmd]} rev-parse --show-toplevel 2>/dev/null)"
+	if [[ -n ${vcs_comm[basedir]} ||
+			$(${vcs_comm[cmd]} rev-parse --is-bare-repository 2>/dev/null) = true ]]; then
+		return 0
+	fi
+
+	maintree="$(${vcs_comm[cmd]} worktree list --porcelain -z | head -zn1)"
+	vcs_comm[basedir]=${maintree:9}
+	return 0
+}
+
 # see https://github.com/zsh-users/zsh/blob/master/Functions/VCS_Info/Backends/VCS_INFO_get_data_git
 
 function VCS_INFO_git_getaction() {
@@ -83,34 +138,6 @@ function VCS_INFO_git_getbranch() {
 	return 0
 }
 
-# VCS_INFO_get_data_git function was copied and modified from:
-# https://github.com/zsh-users/zsh/blob/d8a3bff4f5b4d3df42de8f03adc70f8d0721398f/Functions/VCS_Info/Backends/VCS_INFO_get_data_git
-#
-# The Z Shell is copyright (c) 1992-2017 Paul Falstad, Richard Coleman,
-# Zoltán Hidvégi, Andrew Main, Peter Stephenson, Sven Wischnowsky, and
-# others.  All rights reserved.  Individual authors, whether or not
-# specifically named, retain copyright in all changes; in what follows, they
-# are referred to as `the Zsh Development Group'.  This is for convenience
-# only and this body has no legal status.  The Z shell is distributed under
-# the following licence; any provisions made in individual files take
-# precedence.
-#
-# Permission is hereby granted, without written agreement and without
-# licence or royalty fees, to use, copy, modify, and distribute this
-# software and to distribute modified versions of this software for any
-# purpose, provided that the above copyright notice and the following
-# two paragraphs appear in all copies of this software.
-#
-# In no event shall the Zsh Development Group be liable to any party for
-# direct, indirect, special, incidental, or consequential damages arising out
-# of the use of this software and its documentation, even if the Zsh
-# Development Group have been advised of the possibility of such damage.
-#
-# The Zsh Development Group specifically disclaim any warranties, including,
-# but not limited to, the implied warranties of merchantability and fitness
-# for a particular purpose.  The software provided hereunder is on an "as is"
-# basis, and the Zsh Development Group have no obligation to provide
-# maintenance, support, updates, enhancements, or modifications.
 function VCS_INFO_get_data_git() {
 	setopt localoptions extendedglob NO_shwordsplit
 	local gitdir gitbase gitbranch gitaction gitunstaged gitstaged gitsha1 gitmisc
@@ -121,29 +148,27 @@ function VCS_INFO_get_data_git() {
 	gitdir=${vcs_comm[gitdir]}
 	VCS_INFO_git_getbranch ${gitdir}
 	gitbase=${vcs_comm[basedir]}
-	if [[ -z ${gitbase} ]]; then
-		# Bare repository
-		gitbase=${gitdir:P}
-	fi
-	rrn=${gitbase:t}
-
-	if [[ -z ${gitdir} ]] || [[ -z ${gitbranch} ]] ; then
+	if [[ -z ${gitdir} || -z ${gitbranch} || -z ${gitbase} ]]; then
 		return 1
 	fi
 
+	rrn=${gitbase:t}
 	if zstyle -t ":vcs_info:${vcs}:${usercontext}:${rrn}" "check-for-changes" ; then
 		querystaged=1
 		queryunstaged=1
 	elif zstyle -t ":vcs_info:${vcs}:${usercontext}:${rrn}" "check-for-staged-changes" ; then
 		querystaged=1
 	fi
-	if (( queryunstaged )) ; then
-		${vcs_comm[cmd]} diff --no-ext-diff --ignore-submodules=dirty --quiet --exit-code 2> /dev/null ||
+
+	if (( queryunstaged )); then
+		${vcs_comm[cmd]} -C ${gitbase} diff \
+				--no-ext-diff --ignore-submodules=dirty --quiet --exit-code 2>/dev/null ||
 			gitunstaged=1
 	fi
+
 	if (( querystaged )) ; then
-		if ${vcs_comm[cmd]} rev-parse --quiet --verify HEAD &> /dev/null; then
-			${vcs_comm[cmd]} diff-index --cached --quiet --ignore-submodules=dirty HEAD 2> /dev/null
+		if ${vcs_comm[cmd]} rev-parse --quiet --verify HEAD &>/dev/null; then
+			${vcs_comm[cmd]} diff-index --cached --quiet --ignore-submodules=dirty HEAD 2>/dev/null
 			(( $? && $? != 128 )) && gitstaged=1
 		else
 			# empty repository (no commits yet)
@@ -156,8 +181,6 @@ function VCS_INFO_get_data_git() {
 	VCS_INFO_adjust
 	VCS_INFO_git_getaction ${gitdir}
 
-	gitmisc=''
-
 	backend_misc[patches]="${gitmisc}"
 	VCS_INFO_formats "${gitaction}" "${gitbranch}" "${gitbase}" \
 		"${gitstaged}" "${gitunstaged}" "${gitsha1}" "${gitmisc}"
@@ -168,20 +191,17 @@ function VCS_INFO_get_data_git() {
 
 # Add support for untracked files
 function +vi-git-untracked() {
-	if [[ $(git ls-files -o --exclude-standard --directory --no-empty-directory 2>/dev/null |
-		sed -u q | wc -l) -gt 0 ]]; then
+	if [[ $(git -C "${hook_com[base]}" ls-files \
+					-o --exclude-standard --directory --no-empty-directory 2>/dev/null |
+				sed -u q | wc -l) -gt 0 ]]; then
 		hook_com[misc]="%F{8}?"
 	fi
 }
 
 function prompt_git() {
-	if [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) != true ]]; then
-		return
-	fi
-
 	vcs_info
 	# This cannot be done by %2v; the color codes don't work at all
-	builtin print -rn -- \
+	if [[ -n $vcs_info_msg_0_ ]] builtin print -rn -- \
 		" %F{blue}(${vcs_info_msg_0_%%:}%F{blue})${vcs_info_msg_1_}"
 }
 
