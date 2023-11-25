@@ -34,13 +34,26 @@ local -A hook_com
 
 (( ${+functions[VCS_INFO_git_getaction]} )) ||
 VCS_INFO_git_getaction () {
-	local gitdir="$1"
+	local gitdir="$1" tmp
+
+	for tmp in "${gitdir}/rebase-apply" "${gitdir}/rebase"; do
+		if [[ -d ${tmp} ]] ; then
+			if   [[ -f "${tmp}/rebasing" ]] ; then
+				gitaction=" >R>"
+			elif [[ -f "${tmp}/applying" ]] ; then
+				gitaction=" >A>"
+			else
+				gitaction=" >R?>"
+			fi
+			return 0
+		fi
+	done
 
 	if [[ -e ${gitdir}/BISECT_LOG ]]; then
 		gitaction=" <B>"
 	elif [[ -e ${gitdir}/MERGE_HEAD ]]; then
 		gitaction=" >M<"
-	elif [[ -e ${gitdir}/rebase-merge || -e ${gitdir}/rebase-apply ]]; then
+	elif [[ -e ${gitdir}/rebase-merge ]]; then
 		gitaction=" >R>"
 	elif [[ -e ${gitdir}/CHERRY_PICK_HEAD ]]; then
 		gitaction=" <C<"
