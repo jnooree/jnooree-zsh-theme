@@ -66,17 +66,20 @@ VCS_INFO_git_getaction () {
 
 (( ${+functions[VCS_INFO_git_getbranch]} )) ||
 VCS_INFO_git_getbranch () {
-	local ref ahead behind
+	local ref compare ahead behind
 	local -a gitstatus
 
 	if ! ref="$(git symbolic-ref -q --short HEAD)"; then
 		# detached HEAD
 		ref="→ $(git rev-parse --short HEAD)"
-	else
-		read -r ahead behind < <(git rev-list \
-			--left-right --count "HEAD...${ref}@{upstream}" -- 2>/dev/null)
+	elif compare="$(git rev-list --left-right --count \
+			"HEAD...${ref}@{upstream}" -- 2>/dev/null)"; then
+		read -r ahead behind <<<"${compare}"
 		(( ahead )) && gitstatus+=("%F{green}+${ahead}")
 		(( behind )) && gitstatus+=("%F{red}-${behind}")
+	else
+		# no upstream
+		gitstatus+=("%F{yellow}±?")
 	fi
 
 	if stashcnt="$(git rev-list -g --count refs/stash -- 2>/dev/null)"; then
