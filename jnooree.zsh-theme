@@ -4,6 +4,16 @@
 # Enable prompt substitution
 setopt promptsubst
 
+if [[ $(uname -s) = *Darwin* ]] && command -v uconv &>/dev/null; then
+	function __prompt_update() {
+		psvar[1]="$(builtin print -rn -- "$1" | uconv -x Any-NFC)"
+	}
+else
+	function __prompt_update() {
+		psvar[1]="$1"
+	}
+fi
+
 function prompt_current_dir() {
 	local curr_dir='%~'
 	local expanded_curr_dir="${(%)curr_dir}"
@@ -19,7 +29,7 @@ function prompt_current_dir() {
 		expanded_curr_dir="${(%)curr_dir}"
 	fi
 
-	psvar[1]="$expanded_curr_dir"
+	__prompt_update "$expanded_curr_dir"
 }
 
 autoload -Uz add-zsh-hook
