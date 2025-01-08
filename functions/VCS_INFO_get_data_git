@@ -55,6 +55,8 @@ VCS_INFO_git_getaction () {
 		gitaction=" >M<"
 	elif [[ -e ${gitdir}/rebase-merge ]]; then
 		gitaction=" >R>"
+	elif [[ -e ${gitdir}/REVERT_HEAD ]]; then
+		gitaction=" <V|"
 	elif [[ -e ${gitdir}/CHERRY_PICK_HEAD ]]; then
 		gitaction=" <C<"
 	else
