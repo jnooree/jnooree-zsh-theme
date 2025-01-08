@@ -31,11 +31,23 @@ function prompt_current_dir() {
 
 	__prompt_update "$expanded_curr_dir"
 }
+# For first pwd
+prompt_current_dir
+
+function jnr_precmd() {
+	builtin print -Pn '\e]0;%n@%m [%1v]\a'
+}
+
+function jnr_preexec() {
+	builtin print -Pn '\e]0;%n@%m: '
+	builtin print -rn -- "$1"
+	builtin print -n '\a'
+}
 
 autoload -Uz add-zsh-hook
 add-zsh-hook chpwd prompt_current_dir
-# For first pwd
-prompt_current_dir
+add-zsh-hook precmd jnr_precmd
+add-zsh-hook preexec jnr_preexec
 
 # Some of the code was copied and modified from the examples
 # of the official zsh repo:
