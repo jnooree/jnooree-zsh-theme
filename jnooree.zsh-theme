@@ -24,9 +24,12 @@ function prompt_current_dir() {
 		expanded_curr_dir="${(%)curr_dir}"
 	fi
 
-	if [[ ${#expanded_curr_dir} -gt $(( COLUMNS - ${MIN_COLUMNS:-30} )) ]]; then
-		curr_dir='.../%2d'
-		expanded_curr_dir="${(%)curr_dir}"
+	if [[ ${#expanded_curr_dir} -gt $((COLUMNS - ${MIN_COLUMNS:-30})) ]]; then
+		local -a fragments=("${(s:/:)expanded_curr_dir#/}")
+		if [[ ${#fragments} -gt 2 ]]; then
+			curr_dir='.../%2d'
+			expanded_curr_dir="${(%)curr_dir}"
+		fi
 	fi
 
 	__prompt_update "$expanded_curr_dir"
