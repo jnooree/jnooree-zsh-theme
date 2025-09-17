@@ -86,9 +86,9 @@ if [[ $USER != "$DEFAULT_USER" ]]; then
 elif [[ -n $SLURM_JOB_ID ]]; then
 	RPROMPT='%F{yellow}@${SLURMD_NODENAME:-${SLURM_SUBMIT_HOST}}%f'
 elif [[ -n $SSH_CONNECTION ]]; then
-	RPROMPT='%F{green}@%m%f'
+	RPROMPT+='@%m'
 else
-	RPROMPT='@%m'
+	RPROMPT+='%F{green}@%m'
 fi
 
 if [[ -n $RPROMPT ]]; then
