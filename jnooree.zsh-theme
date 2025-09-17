@@ -84,7 +84,7 @@ $'$(prompt_git)%f%-50(l::\n>)%b '
 if [[ $USER != "$DEFAULT_USER" ]]; then
 	RPROMPT='%n@%m'
 elif [[ -n $SLURM_JOB_ID ]]; then
-	RPROMPT='%F{yellow}@${SLURMD_NODENAME}%f'
+	RPROMPT='%F{yellow}@${SLURMD_NODENAME:-${SLURM_SUBMIT_HOST}}%f'
 elif [[ -n $SSH_CONNECTION ]]; then
 	RPROMPT='%F{green}@%m%f'
 else
