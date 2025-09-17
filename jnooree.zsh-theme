@@ -81,17 +81,20 @@ function prompt_git() {
 PROMPT='${DIRENV_MODIFIER:-}%B%(?:%F{green}:%F{red})[%F{cyan}%1v%(?:%F{green}:%F{red})]'\
 $'$(prompt_git)%f%-50(l::\n>)%b '
 
-if [[ $USER != "$DEFAULT_USER" ]]; then
-	RPROMPT='%n@%m'
-elif [[ -n $SLURM_JOB_ID ]]; then
-	RPROMPT='%F{yellow}@${SLURMD_NODENAME:-${SLURM_SUBMIT_HOST}}%f'
+if [[ -n $SLURM_JOB_ID ]]; then
+	rprompt_color='%F{yellow}'
+	RPROMPT='@${SLURMD_NODENAME:-${SLURM_SUBMIT_HOST}}'
 elif [[ -n $SSH_CONNECTION ]]; then
-	RPROMPT+='@%m'
+	rprompt_color='%F{blue}'
+	RPROMPT='@%m'
 else
-	RPROMPT+='%F{green}@%m'
+	rprompt_color='%F{green}'
+	RPROMPT='@%m'
 fi
 
-if [[ -n $RPROMPT ]]; then
-	ZLE_RPROMPT_INDENT=0
-	RPROMPT="%B%F{blue}$RPROMPT%f%b"
+if [[ $USER != "$DEFAULT_USER" ]]; then
+	RPROMPT="%n$RPROMPT"
 fi
+
+ZLE_RPROMPT_INDENT=0
+RPROMPT="%B$rprompt_color$RPROMPT%f%b"
