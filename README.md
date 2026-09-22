@@ -6,7 +6,7 @@ This is a minimal zsh theme with colors adopted from the [robbyrussell's theme](
 
 ## Requirements
 
-- zsh 5.9 or later.
+- zsh (tested with 5.9).
 - git 2.35 or later (Ubuntu 24.04 ships 2.43). Older git still works but the stash count is not shown.
 
 Git information comes from a single `git status --porcelain=v2` call per prompt, so repository-level git configuration applies: set `status.showUntrackedFiles=no` to skip the untracked scan in huge repositories, and enable `core.untrackedCache` to speed it up.
