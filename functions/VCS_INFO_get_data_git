@@ -29,6 +29,7 @@
 setopt localoptions extendedglob NO_shwordsplit
 local gitdir gitbase gitbranch gitaction gitunstaged gitstaged gitsha1 gitmisc
 local -i querystaged queryunstaged
+local -x GIT_OPTIONAL_LOCKS=0
 local -a git_patches_applied git_patches_unapplied
 local -A hook_com
 
