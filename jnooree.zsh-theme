@@ -4,7 +4,7 @@
 # Enable prompt substitution
 setopt promptsubst
 
-if [[ $(uname -s) = *Darwin* ]] && command -v uconv &>/dev/null; then
+if [[ $OSTYPE = darwin* ]] && command -v uconv &>/dev/null; then
 	function __prompt_update() {
 		psvar[1]="$(builtin print -rn -- "$1" | uconv -x Any-NFC)"
 	}
