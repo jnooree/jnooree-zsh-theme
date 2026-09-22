@@ -68,7 +68,7 @@ VCS_INFO_git_getaction () {
 
 (( ${+functions[VCS_INFO_git_getbranch]} )) ||
 VCS_INFO_git_getbranch () {
-	local ref compare ahead behind
+	local ref compare ahead behind stashcnt
 	local -a gitstatus
 
 	if ! ref="$(git symbolic-ref -q --short HEAD)"; then
