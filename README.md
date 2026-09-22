@@ -4,7 +4,7 @@
 
 This is a minimal zsh theme with colors adopted from the [robbyrussell's theme](https://github.com/ohmyzsh/ohmyzsh/blob/master/themes/robbyrussell.zsh-theme). Displays current working directory and git information[^1] in the prompt.
 
-[^1]: Implemented with zsh's `vsc_info` function.
+[^1]: Implemented with zsh's `vcs_info` function.
 
 If you're interested in this theme, then you might also want to check out my [zim](https://github.com/zimfw/zimfw) [configurations](https://github.com/jnooree/zim-cfg).
 
