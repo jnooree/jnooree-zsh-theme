@@ -27,11 +27,9 @@
 # see https://github.com/zsh-users/zsh/blob/master/Functions/VCS_Info/Backends/VCS_INFO_get_data_git
 
 setopt localoptions extendedglob NO_shwordsplit
-local gitdir gitbase gitbranch gitaction gitunstaged gitstaged gitsha1 gitmisc
+local gitdir gitbase gitbranch gitaction gitunstaged gitstaged
 local -i querystaged queryunstaged
 local -x GIT_OPTIONAL_LOCKS=0
-local -a git_patches_applied git_patches_unapplied
-local -A hook_com
 
 (( ${+functions[VCS_INFO_git_getaction]} )) ||
 VCS_INFO_git_getaction () {
@@ -129,7 +127,6 @@ fi
 VCS_INFO_adjust
 VCS_INFO_git_getaction ${gitdir}
 
-backend_misc[patches]="${gitmisc}"
 VCS_INFO_formats "${gitaction}" "${gitbranch}" "${gitbase}" \
-	"${gitstaged}" "${gitunstaged}" "${gitsha1}" "${gitmisc}"
+	"${gitstaged}" "${gitunstaged}" "" ""
 return 0
