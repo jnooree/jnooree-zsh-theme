@@ -2,9 +2,14 @@
 
 ## Introduction
 
-This is a minimal zsh theme with colors adopted from the [robbyrussell's theme](https://github.com/ohmyzsh/ohmyzsh/blob/master/themes/robbyrussell.zsh-theme). Displays current working directory and git information[^1] in the prompt.
+This is a minimal zsh theme with colors adopted from the [robbyrussell's theme](https://github.com/ohmyzsh/ohmyzsh/blob/master/themes/robbyrussell.zsh-theme). Displays current working directory and git information in the prompt.
 
-[^1]: Implemented with zsh's `vcs_info` function.
+## Requirements
+
+- zsh 5.9 or later.
+- git 2.35 or later (Ubuntu 24.04 ships 2.43). Older git still works but the stash count is not shown.
+
+Git information comes from a single `git status --porcelain=v2` call per prompt, so repository-level git configuration applies: set `status.showUntrackedFiles=no` to skip the untracked scan in huge repositories, and enable `core.untrackedCache` to speed it up.
 
 If you're interested in this theme, then you might also want to check out my [zim](https://github.com/zimfw/zimfw) [configurations](https://github.com/jnooree/zim-cfg).
 
