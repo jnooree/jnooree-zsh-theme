@@ -109,8 +109,8 @@ fi
 
 if (( queryunstaged )); then
 	${vcs_comm[cmd]} -C ${gitbase} diff \
-			--no-ext-diff --ignore-submodules=dirty --quiet --exit-code 2>/dev/null ||
-		gitunstaged=1
+			--no-ext-diff --ignore-submodules=dirty --quiet --exit-code 2>/dev/null
+	(( $? && $? != 128 )) && gitunstaged=1
 fi
 
 if (( querystaged )) ; then
