@@ -41,7 +41,7 @@ function jnr_precmd() {
 
 function jnr_preexec() {
 	builtin print -Pn '\e]0;%n@%m: '
-	builtin print -rn -- "$1"$'\a'
+	builtin print -rn -- "${(V)1}"$'\a'
 }
 
 autoload -Uz add-zsh-hook
