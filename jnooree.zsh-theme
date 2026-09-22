@@ -46,8 +46,10 @@ function jnr_preexec() {
 
 autoload -Uz add-zsh-hook
 add-zsh-hook chpwd prompt_current_dir
-add-zsh-hook precmd jnr_precmd
-add-zsh-hook preexec jnr_preexec
+if [[ $TERM != (dumb|linux) ]]; then
+	add-zsh-hook precmd jnr_precmd
+	add-zsh-hook preexec jnr_preexec
+fi
 
 # Some of the code was copied and modified from the examples
 # of the official zsh repo:
