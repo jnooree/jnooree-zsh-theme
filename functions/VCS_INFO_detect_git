@@ -27,7 +27,6 @@
 # see https://github.com/zsh-users/zsh/blob/master/Functions/VCS_Info/Backends/VCS_INFO_detect_git
 
 setopt localoptions NO_shwordsplit
-local maintree
 
 [[ $1 == '--flavours' ]] && { print -l git-p4 git-svn; return 0 }
 
@@ -45,6 +44,5 @@ if [[ -n ${vcs_comm[basedir]} ||
 	return 0
 fi
 
-maintree="$(${vcs_comm[cmd]} worktree list --porcelain -z | head -zn1)"
-vcs_comm[basedir]=${maintree:9}
+vcs_comm[basedir]=${${${(f)"$(${vcs_comm[cmd]} worktree list --porcelain)"}[1]}#worktree }
 return 0
