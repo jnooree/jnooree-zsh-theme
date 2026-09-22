@@ -51,32 +51,100 @@ if [[ $TERM != (dumb|linux) ]]; then
 	add-zsh-hook preexec jnr_preexec
 fi
 
-# Some of the code was copied and modified from the examples
-# of the official zsh repo:
-# https://github.com/zsh-users/zsh/blob/master/Misc/vcs_info-examples
-autoload -Uz vcs_info
-zstyle ':vcs_info:*' enable git
-zstyle ':vcs_info:git*+post-backend:*' hooks git-untracked
-zstyle ':vcs_info:*' check-for-changes true
-zstyle ':vcs_info:*' stagedstr "%F{cyan}+"
-zstyle ':vcs_info:*' unstagedstr "%F{yellow}!"
-zstyle ':vcs_info:*' formats "%F{red}%b%F{blue}:%c%u%m"
-zstyle ':vcs_info:*' actionformats "%F{red}%b%F{blue}:%c%u%m" "%F{magenta}%a"
+# Sets jnr_git_dir and jnr_git_top; fails outside a repository or in a bare one.
+function jnr_git_locate() {
+	local dir=$PWD dotgit
+	if [[ -z $GIT_DIR ]]; then
+		while [[ $dir != / ]]; do
+			dotgit=$dir/.git
+			if [[ -d $dotgit ]]; then
+				jnr_git_top=$dir jnr_git_dir=$dotgit
+				return 0
+			elif [[ -f $dotgit ]]; then
+				dotgit=${"$(<$dotgit)"#gitdir: }
+				[[ $dotgit == /* ]] || dotgit=$dir/$dotgit
+				jnr_git_top=$dir jnr_git_dir=${dotgit:a}
+				return 0
+			fi
+			dir=${dir:h}
+		done
+	fi
 
-# Add support for untracked files
-function +vi-git-untracked() {
-	if [[ $(git -C "${hook_com[base]}" ls-files \
-					-o --exclude-standard --directory --no-empty-directory 2>/dev/null |
-				sed -u q | wc -l) -gt 0 ]]; then
-		hook_com[misc]="%F{8}?"
+	local -a info
+	info=(${(f)"$(git rev-parse --git-dir --is-bare-repository \
+		--is-inside-work-tree --show-toplevel 2>/dev/null)"})
+	(( $#info >= 3 )) && [[ $info[2] != true ]] || return 1
+
+	jnr_git_dir=${info[1]:a}
+	if [[ $info[3] == true ]]; then
+		jnr_git_top=$info[4]
+	else
+		jnr_git_top=${${${(f)"$(git worktree list --porcelain)"}[1]}#worktree }
+	fi
+}
+
+function jnr_git_action() {
+	local gitdir=$1
+	if [[ -d $gitdir/rebase-apply ]]; then
+		if [[ -f $gitdir/rebase-apply/rebasing ]]; then
+			REPLY='>R>'
+		elif [[ -f $gitdir/rebase-apply/applying ]]; then
+			REPLY='>A>'
+		else
+			REPLY='>R?>'
+		fi
+	elif [[ -e $gitdir/BISECT_LOG ]]; then
+		REPLY='<B>'
+	elif [[ -e $gitdir/MERGE_HEAD ]]; then
+		REPLY='>M<'
+	elif [[ -e $gitdir/rebase-merge ]]; then
+		REPLY='>R>'
+	elif [[ -e $gitdir/REVERT_HEAD ]]; then
+		REPLY='<V|'
+	elif [[ -e $gitdir/CHERRY_PICK_HEAD ]]; then
+		REPLY='<C<'
+	else
+		return 1
 	fi
 }
 
 function prompt_git() {
-	vcs_info
-	# This cannot be done by %2v; the color codes don't work at all
-	if [[ -n $vcs_info_msg_0_ ]] builtin print -rn -- \
-		" %F{blue}(${vcs_info_msg_0_%%:}%F{blue})${vcs_info_msg_1_}"
+	local jnr_git_dir jnr_git_top
+	jnr_git_locate || return
+
+	local -a lines
+	lines=(${(f)"$(GIT_OPTIONAL_LOCKS=0 git -C $jnr_git_top status \
+		--porcelain=v2 --branch --show-stash --no-renames \
+		--ignore-submodules=dirty 2>/dev/null)"})
+	(( $#lines )) || return
+
+	local head=${lines[(r)\# branch.head *]#\# branch.head }
+	local ab=${lines[(r)\# branch.ab *]#\# branch.ab }
+	local stash=${lines[(r)\# stash *]#\# stash }
+	local -a marks
+	if [[ $head == '(detached)' ]]; then
+		head="→ $(git -C $jnr_git_top describe --tags --exact-match HEAD 2>/dev/null ||
+			builtin print -r -- ${${lines[(r)\# branch.oid *]#\# branch.oid }[1,7]})"
+	elif [[ -n $ab ]]; then
+		local ahead=${${ab#+}%% *} behind=${ab##* -}
+		(( ahead )) && marks+=("%F{green}+$ahead")
+		(( behind )) && marks+=("%F{red}-$behind")
+	else
+		marks+=('%F{yellow}±?')
+	fi
+	[[ -n $stash ]] && marks+=("%F{magenta}↓$stash")
+
+	local flags
+	(( ${lines[(I)u *]} || ${lines[(I)[12] [^.]*]} )) && flags+='%F{cyan}+'
+	(( ${lines[(I)u *]} || ${lines[(I)[12] ?[^.]*]} )) && flags+='%F{yellow}!'
+	(( ${lines[(I)\? *]} )) && flags+='%F{8}?'
+
+	local info="%F{red}${head//\%/%%}"
+	local sep="%F{blue}/"
+	(( $#marks )) && info+="%F{blue}:${(pj.$sep.)marks}"
+	[[ -n $flags ]] && info+="%F{blue}:$flags"
+	jnr_git_action $jnr_git_dir && info+="%F{blue}) %F{magenta}$REPLY" || info+='%F{blue})'
+	builtin print -rn -- " %F{blue}($info"
 }
 
 # Now define prompt & rprompt
