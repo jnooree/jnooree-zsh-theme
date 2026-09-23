@@ -53,29 +53,12 @@ fi
 
 # Sets jnr_git_dir and jnr_git_top; fails outside a repository or in a bare one.
 function jnr_git_locate() {
-	local dir=$PWD dotgit
-	if [[ -z $GIT_DIR ]]; then
-		while [[ $dir != / ]]; do
-			dotgit=$dir/.git
-			if [[ -d $dotgit ]]; then
-				jnr_git_top=$dir jnr_git_dir=$dotgit
-				return 0
-			elif [[ -f $dotgit ]]; then
-				dotgit=${"$(<$dotgit)"#gitdir: }
-				[[ $dotgit == /* ]] || dotgit=$dir/$dotgit
-				jnr_git_top=$dir jnr_git_dir=${dotgit:a}
-				return 0
-			fi
-			dir=${dir:h}
-		done
-	fi
-
 	local -a info
-	info=(${(f)"$(git rev-parse --git-dir --is-bare-repository \
+	info=(${(f)"$(git rev-parse --absolute-git-dir --is-bare-repository \
 		--is-inside-work-tree --show-toplevel 2>/dev/null)"})
 	(( $#info >= 3 )) && [[ $info[2] != true ]] || return 1
 
-	jnr_git_dir=${info[1]:a}
+	jnr_git_dir=$info[1]
 	if [[ $info[3] == true ]]; then
 		jnr_git_top=$info[4]
 	else
