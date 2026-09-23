@@ -62,7 +62,7 @@ function jnr_git_locate() {
 	if [[ $info[3] == true ]]; then
 		jnr_git_top=$info[4]
 	else
-		jnr_git_top=${${${(f)"$(git worktree list --porcelain)"}[1]}#worktree }
+		jnr_git_top=${${${(0)"$(git worktree list --porcelain -z)"}[1]}#worktree }
 	fi
 }
 
