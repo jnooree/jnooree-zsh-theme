@@ -92,6 +92,8 @@ function jnr_git_action() {
 }
 
 function prompt_git() {
+	[[ -n $DISABLE_GIT_PROMPT ]] && return
+
 	local jnr_git_dir jnr_git_top
 	jnr_git_locate || return
 

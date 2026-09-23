@@ -19,6 +19,7 @@ Several shell variables could control this theme's behavior:
 
 - `DEFAULT_USER`: If `$USER` is same to `$DEFAULT_USER`, username would not appear in the rprompt; otherwise it will be displayed in this format: `${USER}@${SHORT_HOST}`. I've found this setting quite useful for whom might switch between multiple users (e.g., system admins). This must be set **before** sourcing the theme.
 - `MIN_COLUMNS`: If the length of (shell expanded) current directory is greater than `$COLUMNS - $MIN_COLUMNS`, current working directory in the prompt will be truncated to the last two path components. If `$MIN_COLUMNS` is not set, it is default to `30`.
+- `DISABLE_GIT_PROMPT`: If set to any non-empty value, git information is not displayed and no git command is run for the prompt. Checked on every prompt, so it can be exported in a running shell or set per directory (e.g. with direnv) for repositories where `git status` is too slow.
 
 ## Screenshots
 
