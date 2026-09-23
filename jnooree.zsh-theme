@@ -51,18 +51,47 @@ if [[ $TERM != (dumb|linux) ]]; then
 	add-zsh-hook preexec jnr_preexec
 fi
 
+zmodload zsh/system
+
+# Runs git with stdout collected into REPLY; returns 124 on timeout.
+function jnr_git() {
+	setopt localoptions no_monitor no_notify
+	local -x GIT_OPTIONAL_LOCKS=0
+	local -i fd pid ret
+	local chunk
+
+	coproc git "$@" 2>/dev/null
+	pid=$!
+	exec {fd}<&p
+	REPLY=
+	while true; do
+		sysread -t ${GIT_PROMPT_TIMEOUT:-1} -i $fd chunk
+		ret=$?
+		(( ret )) && break
+		REPLY+=$chunk
+	done
+	exec {fd}<&-
+
+	(( ret == 5 )) && return 0
+	(( pid > 0 )) && kill $pid 2>/dev/null
+	(( ret == 4 )) && return 124
+	return 1
+}
+
 # Sets jnr_git_dir and jnr_git_top; fails outside a repository or in a bare one.
 function jnr_git_locate() {
 	local -a info
-	info=(${(f)"$(git rev-parse --absolute-git-dir --is-bare-repository \
-		--is-inside-work-tree --show-toplevel 2>/dev/null)"})
+	jnr_git rev-parse --absolute-git-dir --is-bare-repository \
+		--is-inside-work-tree --show-toplevel || return
+	info=(${(f)REPLY})
 	(( $#info >= 3 )) && [[ $info[2] != true ]] || return 1
 
 	jnr_git_dir=$info[1]
 	if [[ $info[3] == true ]]; then
 		jnr_git_top=$info[4]
 	else
-		jnr_git_top=${${${(0)"$(git worktree list --porcelain -z)"}[1]}#worktree }
+		jnr_git worktree list --porcelain -z || return
+		jnr_git_top=${${${(0)REPLY}[1]}#worktree }
 	fi
 }
 
@@ -95,12 +124,15 @@ function prompt_git() {
 	[[ -n $DISABLE_GIT_PROMPT ]] && return
 
 	local jnr_git_dir jnr_git_top
-	jnr_git_locate || return
-
 	local -a lines
-	lines=(${(f)"$(GIT_OPTIONAL_LOCKS=0 git -C $jnr_git_top status \
+	jnr_git_locate && jnr_git -C $jnr_git_top status \
 		--porcelain=v2 --branch --show-stash --no-renames \
-		--ignore-submodules=dirty 2>/dev/null)"})
+		--ignore-submodules=dirty
+	case $? in
+		0) lines=(${(f)REPLY}) ;;
+		124) builtin print -rn -- ' %F{blue}(%F{red}timeout%F{blue})'; return ;;
+		*) return ;;
+	esac
 	(( $#lines )) || return
 
 	local head=${lines[(r)\# branch.head *]#\# branch.head }
@@ -108,8 +140,9 @@ function prompt_git() {
 	local stash=${lines[(r)\# stash *]#\# stash }
 	local -a marks
 	if [[ $head == '(detached)' ]]; then
-		head="→ $(git -C $jnr_git_top describe --tags --exact-match HEAD 2>/dev/null ||
-			builtin print -r -- ${${lines[(r)\# branch.oid *]#\# branch.oid }[1,7]})"
+		jnr_git -C $jnr_git_top describe --tags --exact-match HEAD
+		local tag=${REPLY%%$'\n'*}
+		head="→ ${tag:-${${lines[(r)\# branch.oid *]#\# branch.oid }[1,7]}}"
 	elif [[ -n $ab ]]; then
 		local ahead=${${ab#+}%% *} behind=${ab##* -}
 		(( ahead )) && marks+=("%F{green}+$ahead")
