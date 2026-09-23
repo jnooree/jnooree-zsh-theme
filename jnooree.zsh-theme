@@ -5,16 +5,16 @@
 setopt promptsubst
 
 if [[ $OSTYPE = darwin* ]] && command -v uconv &>/dev/null; then
-	function __prompt_update() {
+	function _jnr_set_dir() {
 		psvar[1]="$(builtin print -rn -- "$1" | uconv -x Any-NFC)"
 	}
 else
-	function __prompt_update() {
+	function _jnr_set_dir() {
 		psvar[1]="$1"
 	}
 fi
 
-function prompt_current_dir() {
+function _jnr_update_dir() {
 	local curr_dir='%~'
 	local expanded_curr_dir="${(%)curr_dir}"
 
@@ -30,68 +30,173 @@ function prompt_current_dir() {
 		expanded_curr_dir="${(%)curr_dir}"
 	fi
 
-	__prompt_update "$expanded_curr_dir"
+	_jnr_set_dir "$expanded_curr_dir"
 }
 # For first pwd
-prompt_current_dir
+_jnr_update_dir
 
-function jnr_precmd() {
+function _jnr_precmd() {
 	builtin print -Pn '\e]0;%n@%m [%1v]\a'
 }
 
-function jnr_preexec() {
+function _jnr_preexec() {
 	builtin print -Pn '\e]0;%n@%m: '
 	builtin print -rn -- "${(V)1}"$'\a'
 }
 
 autoload -Uz add-zsh-hook
-add-zsh-hook chpwd prompt_current_dir
+add-zsh-hook chpwd _jnr_update_dir
 if [[ $TERM != (dumb|linux) ]]; then
-	add-zsh-hook precmd jnr_precmd
-	add-zsh-hook preexec jnr_preexec
+	add-zsh-hook precmd _jnr_precmd
+	add-zsh-hook preexec _jnr_preexec
 fi
 
-# Some of the code was copied and modified from the examples
-# of the official zsh repo:
-# https://github.com/zsh-users/zsh/blob/master/Misc/vcs_info-examples
-autoload -Uz vcs_info
-zstyle ':vcs_info:*' enable git
-zstyle ':vcs_info:git*+post-backend:*' hooks git-untracked
-zstyle ':vcs_info:*' check-for-changes true
-zstyle ':vcs_info:*' stagedstr "%F{cyan}+"
-zstyle ':vcs_info:*' unstagedstr "%F{yellow}!"
-zstyle ':vcs_info:*' formats "%F{red}%b%F{blue}:%c%u%m"
-zstyle ':vcs_info:*' actionformats "%F{red}%b%F{blue}:%c%u%m" "%F{magenta}%a"
+zmodload zsh/system
 
-# Add support for untracked files
-function +vi-git-untracked() {
-	if [[ $(git -C "${hook_com[base]}" ls-files \
-					-o --exclude-standard --directory --no-empty-directory 2>/dev/null |
-				sed -u q | wc -l) -gt 0 ]]; then
-		hook_com[misc]="%F{8}?"
+# Runs git with stdout collected into REPLY; returns 124 on timeout.
+function _jnr_git() {
+	setopt localoptions no_monitor no_notify no_sh_word_split no_glob_subst
+
+	local -x GIT_OPTIONAL_LOCKS=0
+	local -i fd pid ret
+	local chunk
+
+	# coproc (unlike <(...)) publishes the child pid in $!.
+	coproc git "$@" 2>/dev/null
+	pid=$!
+	exec {fd}<&p
+	REPLY=
+	# sysread returns 4 on timeout and 5 on EOF.
+	while true; do
+		sysread -t ${GIT_PROMPT_TIMEOUT:-1} -i $fd chunk
+		ret=$?
+		(( ret )) && break
+		REPLY+=$chunk
+	done
+	exec {fd}<&-
+
+	(( ret == 5 )) && return 0
+	(( pid > 0 )) && kill $pid 2>/dev/null
+	(( ret == 4 )) && return 124
+	return 1
+}
+
+# Sets _jnr_git_dir and _jnr_git_top; fails outside a repository or in a bare one.
+function _jnr_git_locate() {
+	setopt localoptions no_sh_word_split no_glob_subst no_ksh_arrays
+
+	local -a info
+	_jnr_git rev-parse --absolute-git-dir --is-bare-repository \
+		--is-inside-work-tree --show-toplevel || return
+	# Outside a work tree --show-toplevel fails, but the three lines before it
+	# are already printed, hence >= 3 rather than == 4.
+	info=(${(f)REPLY})
+	(( $#info >= 3 )) && [[ $info[2] != true ]] || return 1
+
+	_jnr_git_dir=$info[1]
+	if [[ $info[3] == true ]]; then
+		_jnr_git_top=$info[4]
+	else
+		# Inside .git: first NUL-separated record is "worktree <main worktree path>".
+		_jnr_git worktree list --porcelain -z || return
+		_jnr_git_top=${${${(0)REPLY}[1]}#worktree }
 	fi
 }
 
-function prompt_git() {
-	vcs_info
-	# This cannot be done by %2v; the color codes don't work at all
-	if [[ -n $vcs_info_msg_0_ ]] builtin print -rn -- \
-		" %F{blue}(${vcs_info_msg_0_%%:}%F{blue})${vcs_info_msg_1_}"
+function _jnr_git_action() {
+	local gitdir=$1
+	if [[ -d $gitdir/rebase-apply ]]; then
+		if [[ -f $gitdir/rebase-apply/rebasing ]]; then
+			REPLY='>R>'
+		elif [[ -f $gitdir/rebase-apply/applying ]]; then
+			REPLY='>A>'
+		else
+			REPLY='>R?>'
+		fi
+	elif [[ -e $gitdir/BISECT_LOG ]]; then
+		REPLY='<B>'
+	elif [[ -e $gitdir/MERGE_HEAD ]]; then
+		REPLY='>M<'
+	elif [[ -e $gitdir/rebase-merge ]]; then
+		REPLY='>R>'
+	elif [[ -e $gitdir/REVERT_HEAD ]]; then
+		REPLY='<V|'
+	elif [[ -e $gitdir/CHERRY_PICK_HEAD ]]; then
+		REPLY='<C<'
+	else
+		return 1
+	fi
+}
+
+function _jnr_prompt_git() {
+	[[ -n $DISABLE_GIT_PROMPT ]] && return
+
+	setopt localoptions no_sh_word_split no_glob_subst no_ksh_arrays
+
+	local _jnr_git_dir _jnr_git_top
+	local -a lines
+	_jnr_git_locate && _jnr_git -C $_jnr_git_top status \
+		--porcelain=v2 --branch --show-stash --no-renames \
+		--ignore-submodules=dirty
+	case $? in
+		0) lines=(${(f)REPLY}) ;;
+		124) builtin print -rn -- ' %F{blue}(%F{yellow}!timeout!%F{blue})'; return ;;
+		*) return ;;
+	esac
+	(( $#lines )) || return
+
+	# [(r)pat] yields the first element matching pat; the rest strips the key.
+	local head=${lines[(r)\# branch.head *]#\# branch.head }
+	local ab=${lines[(r)\# branch.ab *]#\# branch.ab }
+	local stash=${lines[(r)\# stash *]#\# stash }
+	local -a marks
+	if [[ $head == '(detached)' ]]; then
+		_jnr_git -C $_jnr_git_top describe --tags --exact-match HEAD
+		local tag=${REPLY%%$'\n'*}
+		head="→ ${tag:-${${lines[(r)\# branch.oid *]#\# branch.oid }[1,7]}}"
+	elif [[ -n $ab ]]; then
+		# ab is "+<ahead> -<behind>"
+		local ahead=${${ab#+}%% *} behind=${ab##* -}
+		(( ahead )) && marks+=("%F{green}+$ahead")
+		(( behind )) && marks+=("%F{red}-$behind")
+	else
+		marks+=('%F{yellow}±?')
+	fi
+	[[ -n $stash ]] && marks+=("%F{magenta}↓$stash")
+
+	local flags
+	# Entries start with "1 XY" (changed), "2 XY" (renamed), "u XY" (unmerged)
+	# or "? " (untracked); X is the index state, Y the work tree state, "." clean.
+	# ${(M)arr:#pat} keeps the elements matching pat, so ${#...} counts them.
+	local -i staged=${#${(M)lines:#[12] [^.]*}} unstaged=${#${(M)lines:#[12] ?[^.]*}}
+	local -i unmerged=${#${(M)lines:#u *}} untracked=${#${(M)lines:#\? *}}
+	(( staged )) && flags+="%F{cyan}+$staged"
+	(( unstaged )) && flags+="%F{yellow}!$unstaged"
+	(( unmerged )) && flags+="%F{red}=$unmerged"
+	(( untracked )) && flags+="%F{8}?$untracked"
+
+	# Branch/tag names may contain %, which prompt expansion would eat.
+	local info=" %F{blue}(\
+%F{red}${head//\%/%%}\
+${marks:+"%F{blue}:"}${(j"%F{blue}/")marks}\
+${flags:+"%F{blue}:"}$flags\
+%F{blue})"
+	_jnr_git_action $_jnr_git_dir && info+=" %F{magenta}$REPLY"
+	builtin print -rn -- "$info"
 }
 
 # Now define prompt & rprompt
 PROMPT='${DIRENV_MODIFIER:-}%B%(?:%F{green}:%F{red})[%F{cyan}%1v%(?:%F{green}:%F{red})]'\
-$'$(prompt_git)%f%-50(l::\n>)%b '
+$'$(_jnr_prompt_git)%f%-50(l::\n>)%b '
 
+RPROMPT='@%m'
 if [[ -n $SLURM_JOB_ID ]]; then
-	rprompt_color='%F{yellow}'
+	_jnr_rprompt_color='%F{yellow}'
 	RPROMPT='@${SLURMD_NODENAME:-${SLURM_SUBMIT_HOST}}'
 elif [[ -n $SSH_CONNECTION ]]; then
-	rprompt_color='%F{blue}'
-	RPROMPT='@%m'
+	_jnr_rprompt_color='%F{blue}'
 else
-	rprompt_color='%F{green}'
-	RPROMPT='@%m'
+	_jnr_rprompt_color='%F{green}'
 fi
 
 if [[ $USER != "$DEFAULT_USER" ]]; then
@@ -99,4 +204,4 @@ if [[ $USER != "$DEFAULT_USER" ]]; then
 fi
 
 ZLE_RPROMPT_INDENT=0
-RPROMPT="%B$rprompt_color$RPROMPT%f%b"
+RPROMPT="%B$_jnr_rprompt_color$RPROMPT%f%b"

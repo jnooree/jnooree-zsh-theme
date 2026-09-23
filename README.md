@@ -2,9 +2,14 @@
 
 ## Introduction
 
-This is a minimal zsh theme with colors adopted from the [robbyrussell's theme](https://github.com/ohmyzsh/ohmyzsh/blob/master/themes/robbyrussell.zsh-theme). Displays current working directory and git information[^1] in the prompt.
+This is a minimal zsh theme with colors adopted from the [robbyrussell's theme](https://github.com/ohmyzsh/ohmyzsh/blob/master/themes/robbyrussell.zsh-theme). Displays current working directory and git information in the prompt.
 
-[^1]: Implemented with zsh's `vcs_info` function.
+## Requirements
+
+- zsh (tested with 5.9).
+- git 2.36 or later (Ubuntu 24.04 ships 2.43). Older git still works but the stash count is not shown, and the prompt breaks when the current directory is a `.git` directory.
+
+Git information comes from a single `git status --porcelain=v2` call per prompt, so repository-level git configuration applies: set `status.showUntrackedFiles=no` to skip the untracked scan in huge repositories, and enable `core.untrackedCache` to speed it up.
 
 If you're interested in this theme, then you might also want to check out my [zim](https://github.com/zimfw/zimfw) [configurations](https://github.com/jnooree/zim-cfg).
 
@@ -14,6 +19,8 @@ Several shell variables could control this theme's behavior:
 
 - `DEFAULT_USER`: If `$USER` is same to `$DEFAULT_USER`, username would not appear in the rprompt; otherwise it will be displayed in this format: `${USER}@${SHORT_HOST}`. I've found this setting quite useful for whom might switch between multiple users (e.g., system admins). This must be set **before** sourcing the theme.
 - `MIN_COLUMNS`: If the length of (shell expanded) current directory is greater than `$COLUMNS - $MIN_COLUMNS`, current working directory in the prompt will be truncated to the last two path components. If `$MIN_COLUMNS` is not set, it is default to `30`.
+- `DISABLE_GIT_PROMPT`: If set to any non-empty value, git information is not displayed and no git command is run for the prompt. Checked on every prompt, so it can be exported in a running shell or set per directory (e.g. with direnv) for repositories where `git status` is too slow.
+- `GIT_PROMPT_TIMEOUT`: Seconds (fractions allowed) each git command may take before it is killed; defaults to `1`. On timeout the git segment reads `(!timeout!)` instead of silently disappearing.
 
 ## Screenshots
 
