@@ -118,10 +118,12 @@ function prompt_git() {
 	[[ -n $stash ]] && marks+=("%F{magenta}↓$stash")
 
 	local flags
-	(( ${lines[(I)[12] [^.]*]} )) && flags+='%F{cyan}+'
-	(( ${lines[(I)[12] ?[^.]*]} )) && flags+='%F{yellow}!'
-	(( ${lines[(I)u *]} )) && flags+='%F{red}='
-	(( ${lines[(I)\? *]} )) && flags+='%F{8}?'
+	local -i staged=${#${(M)lines:#[12] [^.]*}} unstaged=${#${(M)lines:#[12] ?[^.]*}}
+	local -i unmerged=${#${(M)lines:#u *}} untracked=${#${(M)lines:#\? *}}
+	(( staged )) && flags+="%F{cyan}+$staged"
+	(( unstaged )) && flags+="%F{yellow}!$unstaged"
+	(( unmerged )) && flags+="%F{red}=$unmerged"
+	(( untracked )) && flags+="%F{8}?$untracked"
 
 	local info="%F{red}${head//\%/%%}"
 	local sep="%F{blue}/"
