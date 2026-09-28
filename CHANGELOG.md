@@ -4,6 +4,15 @@ Notable changes to this theme. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are
 rolling and named by date.
 
+## 2026-09-28
+
+### Added
+
+- Branches without an upstream show yellow `+n`/`-n` against `origin/HEAD`,
+  `main` or `master` instead of `±?`, which now only appears when no such base
+  exists or the branch is the base itself. Needs git 2.41 or later; older
+  versions keep `±?`.
+
 ## 2026-09-23
 
 ### Changed

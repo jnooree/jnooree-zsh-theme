@@ -128,6 +128,23 @@ function _jnr_git_action() {
 	fi
 }
 
+# Sets REPLY to "<ahead> <behind>" of HEAD against origin/HEAD, main or master.
+function _jnr_git_default_ab() {
+	local branch=$1
+	_jnr_git -C $_jnr_git_top for-each-ref --format='%(refname) %(ahead-behind:HEAD)' \
+		refs/remotes/origin/HEAD refs/heads/main refs/heads/master || return
+	local -a refs=(${(f)REPLY})
+	local base line
+	for base in refs/remotes/origin/HEAD refs/heads/main refs/heads/master; do
+		line=${refs[(r)$base *]}
+		[[ -n $line && $base != refs/heads/$branch ]] || continue
+		# %(ahead-behind:HEAD) counts the base relative to HEAD, hence swapped.
+		REPLY="${line##* } ${${line#* }%% *}"
+		return 0
+	done
+	return 1
+}
+
 function _jnr_prompt_git() {
 	[[ -n $DISABLE_GIT_PROMPT ]] && return
 
@@ -159,6 +176,10 @@ function _jnr_prompt_git() {
 		local ahead=${${ab#+}%% *} behind=${ab##* -}
 		(( ahead )) && marks+=("%F{green}+$ahead")
 		(( behind )) && marks+=("%F{red}-$behind")
+	elif _jnr_git_default_ab $head; then
+		local ahead=${REPLY%% *} behind=${REPLY##* }
+		(( ahead )) && marks+=("%F{yellow}+$ahead")
+		(( behind )) && marks+=("%F{yellow}-$behind")
 	else
 		marks+=('%F{yellow}±?')
 	fi
