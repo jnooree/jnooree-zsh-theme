@@ -4,6 +4,12 @@ Notable changes to this theme. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are
 rolling and named by date.
 
+## 2026-11-02
+
+### Added
+
+- Yellow `±0` for a branch without an upstream that is even with its base.
+
 ## 2026-09-28
 
 ### Added

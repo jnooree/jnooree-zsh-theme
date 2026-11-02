@@ -180,6 +180,7 @@ function _jnr_prompt_git() {
 		local ahead=${REPLY%% *} behind=${REPLY##* }
 		(( ahead )) && marks+=("%F{yellow}+$ahead")
 		(( behind )) && marks+=("%F{yellow}-$behind")
+		(( ahead || behind )) || marks+=('%F{yellow}±0')
 	else
 		marks+=('%F{yellow}±?')
 	fi
